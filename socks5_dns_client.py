@@ -3,7 +3,7 @@ import threading
 import base64
 import random
 import time
-from scapy.all import DNS, DNSQR, IP, UDP, sr1
+from scapy.all import DNS, DNSQR, IP, Raw, UDP, sr1
 
 TUNNEL_DOMAIN = "tunnel.fancy.pants"
 SERVER_IP = "debianvladut.local"
@@ -29,20 +29,34 @@ def dns_txt_query(qname):
         / DNS(rd=1, qd=DNSQR(qname=qname, qtype="TXT"))
     )
     ans = sr1(pkt, verbose=0, timeout=2)
-    if ans and ans.haslayer(DNS) and ans[DNS].ancount > 0:
+    if ans and UDP in ans and Raw in ans:
         try:
-            rr = ans[DNS].an
-            rdata = rr.rdata if hasattr(rr, "rdata") else rr[0].rdata
-            if isinstance(rdata, list):
-                val = "".join(s.decode() if isinstance(s, bytes) else s for s in rdata)
+            dns_pkt = DNS(ans[Raw].load)
+            if dns_pkt.ancount > 0:
+                rlist = []
+                ans_rr = dns_pkt.an
+                for _ in range(dns_pkt.ancount):
+                    if ans_rr.type == 16:
+                        rlist.append(ans_rr.rdata)
+                    ans_rr = ans_rr.payload
+
+                val = ""
+                for rdata in rlist:
+                    if isinstance(rdata, list):
+                        val += "".join(s.decode() if isinstance(s, bytes) else s for s in rdata)
+                    elif isinstance(rdata, bytes):
+                        val += rdata.decode()
+                    else:
+                        val += rdata
+
+                print(f"    [<] DNS TXT reply: {val!r}")
+                return val
             else:
-                val = rdata.decode() if isinstance(rdata, bytes) else rdata
-            print(f"    [<] DNS TXT reply: {val!r}")
-            return val
+                print("    [!] DNS response has no answer records.")
         except Exception as e:
-            print(f"    [!] DNS TXT decode error: {e}")
+            print(f"    [!] Error dissecting DNS response: {e}")
     else:
-        print("    [!] No reply or bad reply to DNS-TXT query.")
+        print("    [!] No reply or missing Raw UDP payload to dissect.")
     return None
 
 
@@ -165,17 +179,24 @@ def socks5_handle(client_sock, client_addr):
         greeting = client_sock.recv(262)
         client_sock.sendall(b"\x05\x00")
         req = client_sock.recv(4)
-        if req[0] != 5 or req[1] != 1:
+        if len(req) < 4 or req[0] != 5 or req[1] != 1:
             raise Exception("Invalid SOCKS5 CONNECT request")
         atyp = req[3]
+
         if atyp == 1:  # IPv4
-            addr = socket.inet_ntoa(client_sock.recv(4))
-        elif atyp == 3:  # Domain
-            length = client_sock.recv(1)[0]
-            addr = client_sock.recv(length).decode()
+            addr_bytes = client_sock.recv(4)
+            addr = socket.inet_ntoa(addr_bytes)
+        elif atyp == 3:  # Domain name
+            domain_len = client_sock.recv(1)[0]
+            addr = client_sock.recv(domain_len).decode()
+        elif atyp == 4:  # IPv6
+            addr_bytes = client_sock.recv(16)
+            addr = socket.inet_ntop(socket.AF_INET6, addr_bytes)
         else:
-            raise Exception("Unsupported address type")
-        port = int.from_bytes(client_sock.recv(2), "big")
+            raise Exception(f"Unsupported address type: {atyp}")
+
+        port_bytes = client_sock.recv(2)
+        port = int.from_bytes(port_bytes, "big")
         dst = f"{addr}:{port}"
         dst_b32 = base64.b32encode(dst.encode()).decode().strip("=")
         qname = f"conn.{sessid}.{dst_b32}.{TUNNEL_DOMAIN}"
