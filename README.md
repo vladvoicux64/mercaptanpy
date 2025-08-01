@@ -39,3 +39,5 @@ As in the case of the server, setup:
 On your server machine, run the server script with elevated privileges. A message informing that the server awaits connections will pop up. 
 On your client machine, run the client script with elevated privileges. A message informing you that the SOCKS5 server is ready will pop up.
 Point your browser/system to use a SOCKS5 proxy, at `localhost:<SOCKS_PORT>` (default: 1080). You should start seeing debug messages of sessions being started.
+
+Speed is ~50kbps, okay for what DNS can do. A C++ rewrite is due.
