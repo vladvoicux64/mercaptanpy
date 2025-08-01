@@ -7,7 +7,7 @@ The use of this software to bypass network restrictions, access unauthorized sys
 By using this project, you agree to comply with all applicable laws, regulations, and terms of service of the networks you interact with.
 
 # Description
-Mercaptan is a multi-connection, multi-threaded SOCKS5 DNS tunnel. It allows piping your network traffic through DNS requests, in mediums where it would be restricted.
+Mercaptan is a multi-connection, multi-threaded SOCKS5 DNS tunnel. It allows piping your network traffic through DNS requests, in mediums where it would be restricted. It also doubles as a privacy oriented DNS server, blocking known ad and tracking domains and forwarding DNS requests to [Quad9](https://quad9.net/).
 
 # Installation and setup
 ## Virtual environment
@@ -31,6 +31,7 @@ As in the case of the server, setup:
 - the SERVER_IP variable, to the IP of your server, example is a local IP I used in development;
 - optionally, the SOCKS_PORT variable to the port you wish to use for the SOCKS5 server;
 - if encountering desync issues, or failed connections, try lowering the speed of the tunnel by increasing the values of the *_WAIT variables;
+- the DNS_PORT variable, if you use a DNS port other than the standard;
 
 (*) - failure to match the two variables' values will result in the tunnel not working.
 
