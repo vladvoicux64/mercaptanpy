@@ -7,6 +7,7 @@ from scapy.all import DNS, DNSQR, IP, UDP, sr1
 
 TUNNEL_DOMAIN = "tunnel.fancy.pants"
 SERVER_IP = "debianvladut.local"
+SOCKS_PORT = 1080
 DNS_PORT = 53
 LONG_WAIT = 0.005
 SHORT_WAIT = 0.0025
@@ -214,7 +215,7 @@ def socks5_handle(client_sock, client_addr):
 def start_socks5_server():
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(("127.0.0.1", 1080))
+    srv.bind(("127.0.0.1", SOCKS_PORT))
     srv.listen(20)
     print(f"[TUNNEL] DNS tunnel client SOCKS5 server running on 127.0.0.1:1080")
     print(f"[TUNNEL] DNS domain: {TUNNEL_DOMAIN}")
